@@ -36,10 +36,30 @@ export default function CreateStory() {
 
     try {
       // In a real app, we would call the API here
-      const storyData = await generateStory(formData)
+      const storyData = await generateStory({
+        age: formData.age,
+        characters: formData.characters,
+        setting: formData.setting,
+        moral: formData.moral,
+        length: formData.length as "short" | "medium" | "long"
+      })
+
+      // Add metadata to the story data
+      const storyWithMetadata = {
+        ...storyData,
+        metadata: {
+          characters: formData.characters,
+          setting: formData.setting,
+          moral: formData.moral,
+          length: formData.length as "short" | "medium" | "long"
+        }
+      }
 
       // Save the story data to localStorage for the story page to access
-      localStorage.setItem("currentStory", JSON.stringify(storyData))
+      localStorage.setItem("currentStory", JSON.stringify(storyWithMetadata))
+      
+      // Also save it with its ID for the polling mechanism
+      localStorage.setItem(`story_${storyData.id}`, JSON.stringify(storyWithMetadata))
 
       // Navigate to the story page
       router.push("/story")

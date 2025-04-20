@@ -75,10 +75,13 @@ export async function generateContinuation(
   input: {
     story: Story;
     prompt: string;
+    newCharacters?: string;
+    newSetting?: string;
+    newMoral?: string;
   }
 ): Promise<Story> {
   try {
-    const { story, prompt } = input;
+    const { story, prompt, newCharacters, newSetting, newMoral } = input;
     console.log("Generating continuation for story:", story.id)
     
     // Ensure we have content to work with
@@ -92,6 +95,21 @@ export async function generateContinuation(
       ? previousContent.slice(0, 200) + "..."
       : previousContent
 
+    // Extract characters and setting from the previous story if available
+    // Use new parameters if provided, otherwise fall back to previous story metadata
+    const characters = newCharacters || story.metadata?.characters || "same characters"
+    const setting = newSetting || story.metadata?.setting || "same setting"
+    const moral = newMoral || story.metadata?.moral || "continuing the previous lesson"
+
+    console.log("Using story details:", { 
+      characters, 
+      setting, 
+      moral,
+      usingNewCharacters: !!newCharacters,
+      usingNewSetting: !!newSetting,
+      usingNewMoral: !!newMoral
+    })
+
     const response = await fetch("/api/generate-story", {
       method: "POST",
       headers: {
@@ -99,9 +117,9 @@ export async function generateContinuation(
       },
       body: JSON.stringify({
         age: "5-10", // Default age range for continuation
-        characters: story.metadata?.characters || "same characters",
-        setting: story.metadata?.setting || "same setting",
-        moral: story.metadata?.moral || "continuing the previous lesson",
+        characters,
+        setting,
+        moral,
         length: "medium",
         continuation: true,
         previousStory: recap,

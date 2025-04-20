@@ -2,164 +2,104 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Home, Save, Wand2 } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
 import { Story } from "@/types/story"
+import StreamingStory from "@/components/streaming-story"
 
-type StoryData = {
+interface StoryMetadata {
+  characters?: string
+  setting?: string
+  moral?: string
+  length?: "short" | "medium" | "long"
+  age?: string
+}
+
+interface StoryData {
   id: string
   title: string
   content: string
+  metadata?: StoryMetadata
   images: string[]
+  imageStatus?: "generating" | "complete" | "error"
+  remainingImageCount?: number
 }
 
 export default function StoryPage() {
   const router = useRouter()
-  const { toast } = useToast()
-  const [story, setStory] = useState<StoryData | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [storyId, setStoryId] = useState<string | null>(null)
+  const [initialContent, setInitialContent] = useState<string>("")
+  const [initialTitle, setInitialTitle] = useState<string>("Your Story")
+  const [metadata, setMetadata] = useState<StoryMetadata>({})
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load the current story from localStorage
-    const loadStory = () => {
+    // Check if we have a story ID in the URL
+    const urlParams = new URLSearchParams(window.location.search)
+    const id = urlParams.get('id')
+    
+    if (id) {
+      setStoryId(id)
+      
+      // Try to load the story from localStorage
       try {
-        const storyJson = localStorage.getItem("currentStory")
+        const storyJson = localStorage.getItem(`story_${id}`)
         if (storyJson) {
-          const storyData = JSON.parse(storyJson)
-          setStory(storyData)
+          const storyData = JSON.parse(storyJson) as StoryData
+          setInitialContent(storyData.content)
+          setInitialTitle(storyData.title)
+          setMetadata(storyData.metadata || {})
+        }
+      } catch (error) {
+        console.error("Error loading story:", error)
+      }
+    } else {
+      // Check if we have a current story in localStorage
+      try {
+        const currentStoryJson = localStorage.getItem("currentStory")
+        if (currentStoryJson) {
+          const storyData = JSON.parse(currentStoryJson) as StoryData
+          setStoryId(storyData.id)
+          setInitialContent(storyData.content)
+          setInitialTitle(storyData.title)
+          setMetadata(storyData.metadata || {})
         } else {
           // No story found, redirect to home
           router.push("/")
         }
       } catch (error) {
-        console.error("Error loading story:", error)
+        console.error("Error loading current story:", error)
         router.push("/")
       }
     }
-
-    loadStory()
+    
+    setIsLoading(false)
   }, [router])
 
-  const saveStory = () => {
-    if (!story) return
-
-    setIsSaving(true)
-
-    try {
-      // Create a Story object with the required fields
-      const storyToSave: Story = {
-        id: story.id,
-        title: story.title || "Untitled Story",
-        content: story.content,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        metadata: {
-          // Add any metadata if available
-        }
-      }
-
-      // Save the story with a unique key
-      localStorage.setItem(`story_${story.id}`, JSON.stringify(storyToSave))
-
-      toast({
-        title: "Story saved!",
-        description: "Your story has been saved successfully.",
-      })
-    } catch (error) {
-      console.error("Error saving story:", error)
-      toast({
-        title: "Error saving story",
-        description: "There was a problem saving your story.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const continueThisStory = () => {
-    if (!story) return
-
-    // Save the current story first
-    saveStory()
-
-    // Navigate to continue page
-    router.push("/continue")
-  }
-
-  if (!story) {
+  if (isLoading) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
-        <div className="text-center">Loading story...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div>Loading your story...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!storyId) {
+    return (
+      <div className="container flex items-center justify-center min-h-screen">
+        <div className="text-center">No story found. Please create a new story.</div>
       </div>
     )
   }
 
   return (
-    <div className="container flex flex-col items-center justify-center min-h-screen px-4 py-8 mx-auto">
-      <Card className="w-full max-w-3xl">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
-            <Link href="/">
-              <Button variant="ghost" size="icon">
-                <Home className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-          <CardTitle className="text-2xl font-bold">{story.title}</CardTitle>
-          <Button variant="ghost" size="icon" onClick={saveStory} disabled={isSaving}>
-            <Save className="w-4 h-4" />
-          </Button>
-        </CardHeader>
-
-        <CardContent>
-          <ScrollArea className="h-[60vh] pr-4">
-            <div className="space-y-8">
-              {story.content.split("\n\n").map((paragraph, index) => {
-                // Display an image after every 1-2 paragraphs, if available
-                const shouldShowImage = story.images[Math.floor(index / 2)] && index % 2 === 1
-
-                return (
-                  <div key={index} className="space-y-6">
-                    <p className="leading-7">{paragraph}</p>
-
-                    {shouldShowImage && (
-                      <div className="flex justify-center my-6">
-                        <div className="relative overflow-hidden rounded-lg w-full max-w-md aspect-[4/3]">
-                          <Image
-                            src={story.images[Math.floor(index / 2)] || "/placeholder.svg"}
-                            alt={`Illustration for ${story.title}`}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </ScrollArea>
-        </CardContent>
-
-        <CardFooter className="flex flex-col sm:flex-row gap-4">
-          <Button variant="outline" className="w-full sm:w-auto" onClick={() => router.push("/create")}>
-            <Wand2 className="w-4 h-4 mr-2" />
-            Create New Story
-          </Button>
-
-          <Button className="w-full sm:w-auto" onClick={continueThisStory}>
-            <BookOpen className="w-4 h-4 mr-2" />
-            Continue This Story
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+    <StreamingStory 
+      storyId={storyId}
+      initialContent={initialContent}
+      initialTitle={initialTitle}
+      metadata={metadata}
+    />
   )
 }
 

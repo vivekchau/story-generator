@@ -82,10 +82,20 @@ export default function ContinueStory() {
         throw new Error("Selected story not found")
       }
 
+      // Automatically generate a recap from the previous story
+      const previousContent = selectedStoryData.content
+      const recap = previousContent.length > 200 
+        ? previousContent.slice(0, 200) + "..."
+        : previousContent
+
       // In a real app, we would call the API here
       const storyData = await generateContinuation({
         story: selectedStoryData,
-        prompt: formData.recap
+        prompt: recap,
+        // Include optional parameters if provided
+        newCharacters: formData.newCharacters || undefined,
+        newSetting: formData.newSetting || undefined,
+        newMoral: formData.newMoral || undefined
       })
 
       // Save the story data to localStorage for the story page to access
@@ -153,32 +163,6 @@ export default function ContinueStory() {
 
                 {selectedStory && (
                   <>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="recap">Story Recap</Label>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <InfoCircle />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">
-                                Briefly describe what happened in the previous story or where you want to continue from
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <Textarea
-                        id="recap"
-                        placeholder="e.g., The unicorn had just discovered the magical cave..."
-                        value={formData.recap}
-                        onChange={(e) => handleChange("recap", e.target.value)}
-                        required
-                        rows={3}
-                      />
-                    </div>
-
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="newCharacters">New Characters (Optional)</Label>
