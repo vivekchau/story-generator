@@ -80,18 +80,16 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
     if (paragraphs.length === 0 || currentParagraphIndex >= paragraphs.length) return
     
     const streamInterval = setInterval(() => {
-      setDisplayedContent(prev => {
-        // Only add the current paragraph if we haven't reached the end
-        if (currentParagraphIndex < paragraphs.length) {
-          return prev + paragraphs[currentParagraphIndex] + "\n\n"
+      // Only proceed if we haven't reached the end
+      if (currentParagraphIndex < paragraphs.length) {
+        setDisplayedContent(prev => prev + paragraphs[currentParagraphIndex] + "\n\n")
+        setCurrentParagraphIndex(prev => prev + 1)
+        
+        // Clear interval when we've displayed all paragraphs
+        if (currentParagraphIndex >= paragraphs.length - 1) {
+          clearInterval(streamInterval)
         }
-        return prev
-      })
-      
-      setCurrentParagraphIndex(prev => prev + 1)
-      
-      // Clear interval when we've displayed all paragraphs
-      if (currentParagraphIndex >= paragraphs.length - 1) {
+      } else {
         clearInterval(streamInterval)
       }
     }, 1000) // Display a new paragraph every second
@@ -267,8 +265,8 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
     // Save the current story first
     saveStory()
 
-    // Navigate to continue page
-    router.push("/continue")
+    // Navigate directly to create page with current story context
+    router.push(`/create?continueFrom=${story.id}`)
   }
 
   if (!story) {
@@ -357,7 +355,7 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
 
                 return (
                   <div key={index} className="space-y-6">
-                    <p className="leading-7">{paragraph}</p>
+                    <p className="leading-7 whitespace-pre-wrap">{paragraph}</p>
 
                     {shouldShowImage && (
                       <div className="flex justify-center my-6">
