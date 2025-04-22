@@ -31,25 +31,79 @@ export default function CreateStory() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const getDefaultCharacter = (age: string) => {
-    if (age === "2-4") {
-      return "a friendly teddy bear and a gentle bunny"
-    }
-    return "a clever fox and a wise owl"
+  const getRandomCharacter = (age: string) => {
+    const youngCharacters = [
+      "a curious little mouse and a gentle elephant",
+      "a playful puppy and a wise old cat",
+      "a tiny fairy and a friendly dragon",
+      "a brave teddy bear and a sleepy bunny",
+      "a magical unicorn and a helpful squirrel",
+      "twin butterfly sisters",
+      "a baby penguin and their polar bear friend"
+    ]
+
+    const olderCharacters = [
+      "a clever fox and a resourceful rabbit",
+      "a young wizard and their phoenix companion",
+      "a time-traveling explorer and their robot friend",
+      "a determined young athlete and their mentor",
+      "a creative artist and their imaginary friend",
+      "siblings with special powers",
+      "an inventor child and their latest creation"
+    ]
+
+    const characters = age === "2-4" ? youngCharacters : olderCharacters
+    return characters[Math.floor(Math.random() * characters.length)]
   }
 
-  const getDefaultSetting = (age: string) => {
-    if (age === "2-4") {
-      return "a cozy treehouse in a magical garden"
-    }
-    return "an enchanted forest with twinkling lights"
+  const getRandomSetting = (age: string) => {
+    const youngSettings = [
+      "a magical treehouse that changes colors",
+      "a garden where toys come to life at night",
+      "a cloud castle made of cotton candy",
+      "a cozy underwater bubble house",
+      "a rainbow forest with singing flowers",
+      "a playground that floats in the sky",
+      "a candy village where everything is sweet"
+    ]
+
+    const olderSettings = [
+      "a hidden valley where dragons nap",
+      "a school for young magicians",
+      "a space station orbiting a rainbow planet",
+      "an ancient library with living books",
+      "a city where animals and humans switched roles",
+      "a mysterious island that appears once a year",
+      "a laboratory where dreams are studied"
+    ]
+
+    const settings = age === "2-4" ? youngSettings : olderSettings
+    return settings[Math.floor(Math.random() * settings.length)]
   }
 
-  const getDefaultMoral = (age: string) => {
-    if (age === "2-4") {
-      return "sharing and being kind to friends"
-    }
-    return "believing in yourself and helping others"
+  const getRandomMoral = (age: string) => {
+    const youngMorals = [
+      "sharing makes everyone happy",
+      "being kind to others brings joy",
+      "trying new things can be fun",
+      "helping others makes us strong",
+      "everyone is special in their own way",
+      "patience leads to wonderful surprises",
+      "family and friends make life magical"
+    ]
+
+    const olderMorals = [
+      "courage means facing your fears",
+      "creativity can solve any problem",
+      "true friendship requires understanding",
+      "learning from mistakes makes us wiser",
+      "being different is a superpower",
+      "perseverance leads to success",
+      "kindness can change the world"
+    ]
+
+    const morals = age === "2-4" ? youngMorals : olderMorals
+    return morals[Math.floor(Math.random() * morals.length)]
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,12 +111,17 @@ export default function CreateStory() {
     setIsGenerating(true)
 
     try {
-      // Prepare data with defaults if fields are empty
+      // Generate random values for empty fields
+      const characters = formData.characters || getRandomCharacter(formData.age)
+      const setting = formData.setting || getRandomSetting(formData.age)
+      const moral = formData.moral || getRandomMoral(formData.age)
+
+      // Prepare data with randomly selected values for empty fields
       const storyData = await generateStory({
         age: formData.age,
-        characters: formData.characters || getDefaultCharacter(formData.age),
-        setting: formData.setting || getDefaultSetting(formData.age),
-        moral: formData.moral || getDefaultMoral(formData.age),
+        characters,
+        setting,
+        moral,
         length: formData.length as "short" | "medium" | "long",
         tone: formData.tone
       })
@@ -71,9 +130,9 @@ export default function CreateStory() {
       const storyWithMetadata = {
         ...storyData,
         metadata: {
-          characters: formData.characters || getDefaultCharacter(formData.age),
-          setting: formData.setting || getDefaultSetting(formData.age),
-          moral: formData.moral || getDefaultMoral(formData.age),
+          characters,
+          setting,
+          moral,
           length: formData.length as "short" | "medium" | "long",
           age: formData.age,
           tone: formData.tone
@@ -149,7 +208,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="characters"
-                placeholder={`e.g., ${getDefaultCharacter(formData.age)}`}
+                placeholder={`e.g., ${getRandomCharacter(formData.age)}`}
                 value={formData.characters}
                 onChange={(e) => handleChange("characters", e.target.value)}
               />
@@ -173,7 +232,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="setting"
-                placeholder={`e.g., ${getDefaultSetting(formData.age)}`}
+                placeholder={`e.g., ${getRandomSetting(formData.age)}`}
                 value={formData.setting}
                 onChange={(e) => handleChange("setting", e.target.value)}
               />
@@ -197,7 +256,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="moral"
-                placeholder={`e.g., ${getDefaultMoral(formData.age)}`}
+                placeholder={`e.g., ${getRandomMoral(formData.age)}`}
                 value={formData.moral}
                 onChange={(e) => handleChange("moral", e.target.value)}
               />
