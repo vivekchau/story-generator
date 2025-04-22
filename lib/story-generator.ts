@@ -10,6 +10,7 @@ type StoryInput = {
   setting: string
   moral: string
   length: string
+  tone: string
 }
 
 type ContinuationInput = {
@@ -18,6 +19,7 @@ type ContinuationInput = {
   newCharacters: string
   newSetting: string
   newMoral: string
+  tone: string
 }
 
 type StoryData = {
@@ -35,11 +37,12 @@ export async function generateStory(
     setting: string;
     moral: string;
     length: "short" | "medium" | "long";
+    tone?: string;
   }
 ): Promise<Story> {
   try {
-    const { age, characters, setting, moral, length } = input;
-    console.log("Generating story with params:", { age, characters, setting, moral, length })
+    const { age, characters, setting, moral, length, tone = "warm, comforting" } = input;
+    console.log("Generating story with params:", { age, characters, setting, moral, length, tone })
     
     const response = await fetch("/api/generate-story", {
       method: "POST",
@@ -52,6 +55,7 @@ export async function generateStory(
         setting,
         moral,
         length,
+        tone,
       }),
     })
 

@@ -19,15 +19,37 @@ export default function CreateStory() {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
   const [formData, setFormData] = useState({
-    age: "",
+    age: "2-4", // Default age
     characters: "",
     setting: "",
     moral: "",
     length: "medium",
+    tone: "warm, comforting",
   })
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const getDefaultCharacter = (age: string) => {
+    if (age === "2-4") {
+      return "a friendly teddy bear and a gentle bunny"
+    }
+    return "a clever fox and a wise owl"
+  }
+
+  const getDefaultSetting = (age: string) => {
+    if (age === "2-4") {
+      return "a cozy treehouse in a magical garden"
+    }
+    return "an enchanted forest with twinkling lights"
+  }
+
+  const getDefaultMoral = (age: string) => {
+    if (age === "2-4") {
+      return "sharing and being kind to friends"
+    }
+    return "believing in yourself and helping others"
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,33 +57,31 @@ export default function CreateStory() {
     setIsGenerating(true)
 
     try {
-      // In a real app, we would call the API here
+      // Prepare data with defaults if fields are empty
       const storyData = await generateStory({
         age: formData.age,
-        characters: formData.characters,
-        setting: formData.setting,
-        moral: formData.moral,
-        length: formData.length as "short" | "medium" | "long"
+        characters: formData.characters || getDefaultCharacter(formData.age),
+        setting: formData.setting || getDefaultSetting(formData.age),
+        moral: formData.moral || getDefaultMoral(formData.age),
+        length: formData.length as "short" | "medium" | "long",
+        tone: formData.tone
       })
 
       // Add metadata to the story data
       const storyWithMetadata = {
         ...storyData,
         metadata: {
-          characters: formData.characters,
-          setting: formData.setting,
-          moral: formData.moral,
-          length: formData.length as "short" | "medium" | "long"
+          characters: formData.characters || getDefaultCharacter(formData.age),
+          setting: formData.setting || getDefaultSetting(formData.age),
+          moral: formData.moral || getDefaultMoral(formData.age),
+          length: formData.length as "short" | "medium" | "long",
+          age: formData.age,
+          tone: formData.tone
         }
       }
 
-      // Save the story data to localStorage for the story page to access
       localStorage.setItem("currentStory", JSON.stringify(storyWithMetadata))
-      
-      // Also save it with its ID for the polling mechanism
       localStorage.setItem(`story_${storyData.id}`, JSON.stringify(storyWithMetadata))
-
-      // Navigate to the story page
       router.push("/story")
     } catch (error) {
       console.error("Error generating story:", error)
@@ -100,7 +120,7 @@ export default function CreateStory() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Select value={formData.age} onValueChange={(value) => handleChange("age", value)} required>
+              <Select value={formData.age} onValueChange={(value) => handleChange("age", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select age range" />
                 </SelectTrigger>
@@ -113,7 +133,7 @@ export default function CreateStory() {
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="characters">Characters</Label>
+                <Label htmlFor="characters">Characters (Optional)</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
@@ -121,7 +141,7 @@ export default function CreateStory() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
-                        Who are the main characters in the story? (e.g., "a brave unicorn", "a curious robot")
+                        Who are the main characters? Leave empty for age-appropriate defaults
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -129,16 +149,15 @@ export default function CreateStory() {
               </div>
               <Input
                 id="characters"
-                placeholder="e.g., a brave unicorn, a curious robot"
+                placeholder={`e.g., ${getDefaultCharacter(formData.age)}`}
                 value={formData.characters}
                 onChange={(e) => handleChange("characters", e.target.value)}
-                required
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="setting">Setting</Label>
+                <Label htmlFor="setting">Setting (Optional)</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
@@ -146,7 +165,7 @@ export default function CreateStory() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
-                        Where does the story take place? (e.g., "a magical forest", "a space station")
+                        Where does the story take place? Leave empty for age-appropriate defaults
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -154,16 +173,15 @@ export default function CreateStory() {
               </div>
               <Input
                 id="setting"
-                placeholder="e.g., a magical forest, a space station"
+                placeholder={`e.g., ${getDefaultSetting(formData.age)}`}
                 value={formData.setting}
                 onChange={(e) => handleChange("setting", e.target.value)}
-                required
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label htmlFor="moral">Moral or Learning</Label>
+                <Label htmlFor="moral">Moral or Learning (Optional)</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
@@ -171,7 +189,7 @@ export default function CreateStory() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
-                        What value or lesson should the story teach? (e.g., "kindness", "perseverance")
+                        What lesson should the story teach? Leave empty for age-appropriate defaults
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -179,11 +197,38 @@ export default function CreateStory() {
               </div>
               <Input
                 id="moral"
-                placeholder="e.g., kindness, perseverance, teamwork"
+                placeholder={`e.g., ${getDefaultMoral(formData.age)}`}
                 value={formData.moral}
                 onChange={(e) => handleChange("moral", e.target.value)}
-                required
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="tone">Story Tone</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoCircle />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Choose the emotional tone of the story
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select value={formData.tone} onValueChange={(value) => handleChange("tone", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="warm, comforting">Warm & Comforting</SelectItem>
+                  <SelectItem value="inspiring">Inspiring</SelectItem>
+                  <SelectItem value="silly">Silly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

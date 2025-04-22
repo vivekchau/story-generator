@@ -23,6 +23,7 @@ interface StoryMetadata {
   moral?: string
   length?: "short" | "medium" | "long"
   age?: string
+  tone?: string
 }
 
 interface StoryData {
@@ -129,7 +130,33 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
       const paragraphIndex = Math.floor((currentImageCount / totalImages) * paragraphs.length)
       const paragraph = paragraphs[paragraphIndex] || ""
       
-      const imagePrompt = `Create a child-friendly illustration without any text or words. Scene description: A gentle, colorful illustration for a children's bedtime story featuring ${story.metadata?.characters} in ${story.metadata?.setting}. The scene shows: "${paragraph.substring(0, 100)}...". Style: Soft, dreamy, and whimsical artwork suitable for children aged ${story.metadata?.age}. The illustration should convey ${story.metadata?.moral} through visual storytelling only. Use warm, soothing colors and avoid any text, letters, or numbers in the image. Make sure to maintain visual consistency with previous illustrations.`
+      // Adjust image style based on tone
+      let styleAdjustment = ""
+      switch (story.metadata?.tone) {
+        case "inspiring":
+          styleAdjustment = "Use vibrant colors and dynamic compositions to create an uplifting and energetic scene. Focus on bold, inspiring visuals."
+          break;
+        case "silly":
+          styleAdjustment = "Create a playful and whimsical scene with exaggerated features and fun elements. Use bright, cheerful colors and cartoonish style."
+          break;
+        default: // warm, comforting
+          styleAdjustment = "Create a gentle scene with warm, soothing colors and soft, dreamy compositions. Focus on cozy and peaceful elements."
+          break;
+      }
+      
+      const imagePrompt = `Create a child-friendly illustration with absolutely NO text, words, numbers, or letters of any kind. Important: The image must be completely free of any written elements.
+
+Scene description: A child-friendly illustration featuring ${story.metadata?.characters} in ${story.metadata?.setting}. The scene depicts: "${paragraph.substring(0, 100)}...".
+
+Style instructions:
+- ${styleAdjustment}
+- Ensure the artwork is age-appropriate for ${story.metadata?.age || '2-4'} years
+- Focus on clear, simple visual storytelling
+- Maintain visual consistency with previous illustrations
+- Use clean, uncluttered compositions
+- NO text, symbols, or numbers anywhere in the image
+
+The illustration should visually convey the story's message about ${story.metadata?.moral} through actions and expressions only.`
       
       console.log("Generating image with prompt:", imagePrompt)
       
@@ -260,7 +287,7 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 15; // Increased margin for better readability
+      const margin = 15;
       const textWidth = pageWidth - (2 * margin);
       
       // Add title page
@@ -270,7 +297,7 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
       // Add metadata if available
       if (story?.metadata) {
         doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100); // Gray color for metadata
+        doc.setTextColor(100, 100, 100);
         let metadataY = pageHeight / 2;
         if (story.metadata.age) {
           doc.text(`For ages ${story.metadata.age}`, pageWidth / 2, metadataY, { align: 'center' });
@@ -292,8 +319,12 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
       const addWrappedText = (text: string, y: number) => {
         const lines = doc.splitTextToSize(text, textWidth);
         doc.text(lines, margin, y);
-        return y + (lines.length * 7); // Reduced line spacing
+        return y + (lines.length * 7);
       };
+
+      // Calculate total images
+      const totalImages = story?.images?.length || 0;
+      let currentImage = 0;
       
       // Add each paragraph and image
       for (let i = 0; i < paragraphs.length; i++) {
@@ -303,8 +334,8 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
         doc.setFontSize(12);
         currentY = addWrappedText(paragraph, currentY);
         
-        // Add image if available (only after every second paragraph)
-        if (story && story.images[Math.floor(i/2)] && i % 2 === 1) {
+        // Add image if we have more images and this is an appropriate spot
+        if (story && currentImage < totalImages && i % 2 === 1) {
           try {
             // Add some space before image
             currentY += 5;
@@ -313,7 +344,7 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
             const response = await fetch('/api/proxy-image', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: story.images[Math.floor(i/2)] })
+              body: JSON.stringify({ url: story.images[currentImage] })
             });
             
             if (!response.ok) throw new Error('Failed to proxy image');
@@ -331,7 +362,7 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
             
             // Calculate dimensions maintaining aspect ratio
             const maxImgWidth = pageWidth - (2 * margin);
-            const maxImgHeight = 120; // Maximum height for images
+            const maxImgHeight = 120;
             let imgWidth = maxImgWidth;
             let imgHeight = (img.height / img.width) * imgWidth;
             
@@ -339,17 +370,19 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
             if (imgHeight > maxImgHeight) {
               imgHeight = maxImgHeight;
               imgWidth = (img.width / img.height) * imgHeight;
-              // Center the image horizontally
-              const xOffset = (pageWidth - imgWidth) / 2;
-              currentY = Math.max(currentY, margin); // Ensure we're not too close to the top
-              doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
-            } else {
-              // Center the image horizontally
-              const xOffset = (pageWidth - imgWidth) / 2;
-              doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
             }
             
-            currentY += imgHeight + 10; // Space after image
+            // Check if we need a new page for the image
+            if (currentY + imgHeight + 15 > pageHeight - margin) {
+              doc.addPage();
+              currentY = margin;
+            }
+            
+            // Center the image horizontally
+            const xOffset = (pageWidth - imgWidth) / 2;
+            doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
+            currentY += imgHeight + 10;
+            currentImage++;
             
             // Clean up the object URL
             URL.revokeObjectURL(imageUrl);
@@ -366,6 +399,65 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
         if (currentY > pageHeight - margin) {
           doc.addPage();
           currentY = margin;
+        }
+      }
+      
+      // If we have any remaining images, add them at the end
+      while (currentImage < totalImages) {
+        try {
+          // Add some space before image
+          currentY += 5;
+          
+          // Check if we need a new page
+          if (currentY + 120 > pageHeight - margin) {
+            doc.addPage();
+            currentY = margin;
+          }
+          
+          // Proxy the image through our API
+          const response = await fetch('/api/proxy-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: story!.images[currentImage] })
+          });
+          
+          if (!response.ok) throw new Error('Failed to proxy image');
+          
+          const blob = await response.blob();
+          const imageUrl = URL.createObjectURL(blob);
+          
+          // Create a temporary image to get dimensions
+          const img = document.createElement('img');
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Failed to load image'));
+            img.src = imageUrl;
+          });
+          
+          // Calculate dimensions maintaining aspect ratio
+          const maxImgWidth = pageWidth - (2 * margin);
+          const maxImgHeight = 120;
+          let imgWidth = maxImgWidth;
+          let imgHeight = (img.height / img.width) * imgWidth;
+          
+          // If image is too tall, scale it down
+          if (imgHeight > maxImgHeight) {
+            imgHeight = maxImgHeight;
+            imgWidth = (img.width / img.height) * imgHeight;
+          }
+          
+          // Center the image horizontally
+          const xOffset = (pageWidth - imgWidth) / 2;
+          doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
+          currentY += imgHeight + 10;
+          currentImage++;
+          
+          // Clean up the object URL
+          URL.revokeObjectURL(imageUrl);
+        } catch (error) {
+          console.error('Failed to add image to PDF:', error);
+          currentY = addWrappedText('(Image could not be loaded)', currentY + 5);
+          currentImage++;
         }
       }
       
