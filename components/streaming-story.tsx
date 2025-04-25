@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import jsPDF from 'jspdf'
+import { useSession, signIn } from "next-auth/react"
 
 interface StoryMetadata {
   characters?: string
@@ -46,6 +47,7 @@ interface StreamingStoryProps {
 export default function StreamingStory({ storyId, initialContent, initialTitle, metadata }: StreamingStoryProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const { data: session } = useSession()
   const [story, setStory] = useState<StoryData | null>(null)
   const [loadingImages, setLoadingImages] = useState<Record<number, boolean>>({})
   const [loadedImages, setLoadedImages] = useState<Record<number, string>>({})
@@ -55,6 +57,8 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
   const [currentParagraphIndex, setCurrentParagraphIndex] = useState(0)
   const [paragraphs, setParagraphs] = useState<string[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
     // Initialize story with initial content
@@ -483,6 +487,53 @@ The illustration should visually convey the story's message about ${story.metada
     }
   };
 
+  const handleSaveStory = async () => {
+    if (!session) {
+      // Redirect to sign in
+      signIn("google")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const session = await fetch('/api/auth/session')
+      const sessionData = await session.json()
+      console.log('Current session:', sessionData)
+
+      const response = await fetch("/api/stories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: story?.title,
+          content: story?.content,
+          metadata: story?.metadata,
+          images: story?.images,
+        }),
+      })
+
+      console.log('Save response:', await response.json())
+
+      if (!response.ok) throw new Error("Failed to save story")
+      
+      setIsSaved(true)
+      toast({
+        title: "Story Saved!",
+        description: "You can find it in your My Stories collection.",
+      })
+    } catch (error) {
+      console.error("Error saving story:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save the story. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   if (!story) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
@@ -524,6 +575,28 @@ The illustration should visually convey the story's message about ${story.metada
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {!isSaved && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleSaveStory}
+                        disabled={isSaving}
+                        className={isSaving ? "cursor-not-allowed opacity-50" : ""}
+                      >
+                        <Save className="w-4 h-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {session ? "Save Story" : "Sign in to Save"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </CardHeader>
 

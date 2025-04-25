@@ -1,27 +1,28 @@
-import type React from "react"
+// This is a server component (no 'use client' here)
+import type { Metadata } from "next"
 import "@/app/globals.css"
 import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
+import { ClientLayout } from "./client-layout"
+import { Providers } from '@/components/providers'
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
-  title: "Bedtime Story Generator",
-  description: "Create magical, personalized bedtime stories for your little ones",
-    generator: 'v0.dev'
+export const metadata: Metadata = {
+  title: "AIStory - AI-Powered Bedtime Stories",
+  description: "Create magical bedtime stories with AI",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        <Providers>
+          <ClientLayout>{children}</ClientLayout>
+        </Providers>
       </body>
     </html>
   )
