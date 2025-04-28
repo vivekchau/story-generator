@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth/next"
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { prisma } from "../../../lib/prisma"
+import { authOptions } from "../auth/[...nextauth]/route"
+import { Prisma } from "@prisma/client"
 
 // Define the expected types
 interface StoryMetadata {
+  [key: string]: string | undefined;  // Add index signature
   characters?: string;
   setting?: string;
   moral?: string;
@@ -21,7 +23,7 @@ interface StoryData {
 }
 
 // Validation functions
-function validateStoryData(data: any): { isValid: boolean; error?: string } {
+export function validateStoryData(data: any): { isValid: boolean; error?: string } {
   if (!data.title || typeof data.title !== 'string') {
     return { isValid: false, error: 'Title is required and must be a string' };
   }
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
     const cleanData: StoryData = {
       title: data.title.trim(),
       content: data.content.trim(),
-      images: Array.isArray(data.images) ? data.images.filter(url => typeof url === 'string') : [],
+      images: Array.isArray(data.images) ? data.images.filter((url: string) => typeof url === 'string') : [],
       metadata: data.metadata || {}
     }
 
@@ -102,10 +104,10 @@ export async function GET(req: Request) {
     console.log('GET /api/stories session:', session);
 
     if (!session || !session.user) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
     const stories = await prisma.story.findMany({
@@ -126,18 +128,15 @@ export async function GET(req: Request) {
       }
     });
 
-    return new Response(JSON.stringify(stories), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return NextResponse.json(stories);
 
   } catch (error) {
     console.error('Error in GET /api/stories:', error);
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({ 
       error: "Internal server error",
       details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    }, {
+      status: 500
     });
   }
 } 

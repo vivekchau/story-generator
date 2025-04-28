@@ -14,10 +14,12 @@ import { ArrowLeft, Wand2 } from "lucide-react"
 import { generateStory } from "@/lib/story-generator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { InfoCircle } from "@/components/info-circle"
+import { AlertCircle } from "@/components/alert-circle"
 
 export default function CreateStory() {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [formData, setFormData] = useState({
     age: "2-4", // Default age
     characters: "",
@@ -26,9 +28,42 @@ export default function CreateStory() {
     length: "medium",
     tone: "warm, comforting",
   })
+  const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {}
+    
+    if (!formData.age) {
+      errors.age = "Please select an age range"
+    }
+    
+    if (formData.characters && formData.characters.length < 3) {
+      errors.characters = "Character description is too short"
+    }
+    
+    if (formData.setting && formData.setting.length < 3) {
+      errors.setting = "Setting description is too short"
+    }
+    
+    if (formData.moral && formData.moral.length < 3) {
+      errors.moral = "Moral description is too short"
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    // Clear validation error when field is updated
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
   }
 
   const getRandomCharacter = (age: string) => {
@@ -108,6 +143,13 @@ export default function CreateStory() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setIsSuccess(false)
+
+    if (!validateForm()) {
+      return
+    }
+
     setIsGenerating(true)
 
     try {
@@ -141,9 +183,11 @@ export default function CreateStory() {
 
       localStorage.setItem("currentStory", JSON.stringify(storyWithMetadata))
       localStorage.setItem(`story_${storyData.id}`, JSON.stringify(storyWithMetadata))
+      setIsSuccess(true)
       router.push("/story")
     } catch (error) {
       console.error("Error generating story:", error)
+      setError("An error occurred while generating the story. Please try again later.")
       setIsGenerating(false)
     }
   }
@@ -165,6 +209,17 @@ export default function CreateStory() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
+            {error && (
+              <div className="p-4 text-sm text-red-500 bg-red-50 rounded-md">
+                <AlertCircle className="inline-block w-4 h-4 mr-2" />
+                {error}
+              </div>
+            )}
+            {isSuccess && (
+              <div className="p-4 text-sm text-green-500 bg-green-50 rounded-md">
+                Story generated successfully! Redirecting...
+              </div>
+            )}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="age">Child&apos;s Age</Label>
@@ -179,7 +234,11 @@ export default function CreateStory() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Select value={formData.age} onValueChange={(value) => handleChange("age", value)}>
+              <Select 
+                value={formData.age} 
+                onValueChange={(value) => handleChange("age", value)}
+                data-testid="story-age"
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select age range" />
                 </SelectTrigger>
@@ -188,6 +247,9 @@ export default function CreateStory() {
                   <SelectItem value="4-8">4-8 years</SelectItem>
                 </SelectContent>
               </Select>
+              {validationErrors.age && (
+                <p className="text-sm text-red-500">{validationErrors.age}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -208,6 +270,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="characters"
+                data-testid="story-characters"
                 placeholder={`e.g., ${getRandomCharacter(formData.age)}`}
                 value={formData.characters}
                 onChange={(e) => handleChange("characters", e.target.value)}
@@ -232,6 +295,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="setting"
+                data-testid="story-setting"
                 placeholder={`e.g., ${getRandomSetting(formData.age)}`}
                 value={formData.setting}
                 onChange={(e) => handleChange("setting", e.target.value)}
@@ -256,6 +320,7 @@ export default function CreateStory() {
               </div>
               <Input
                 id="moral"
+                data-testid="story-moral"
                 placeholder={`e.g., ${getRandomMoral(formData.age)}`}
                 value={formData.moral}
                 onChange={(e) => handleChange("moral", e.target.value)}
@@ -278,39 +343,66 @@ export default function CreateStory() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Select value={formData.tone} onValueChange={(value) => handleChange("tone", value)}>
+              <Select 
+                value={formData.tone} 
+                onValueChange={(value) => handleChange("tone", value)}
+                data-testid="story-tone"
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="warm, comforting">Warm & Comforting</SelectItem>
-                  <SelectItem value="inspiring">Inspiring</SelectItem>
-                  <SelectItem value="silly">Silly</SelectItem>
+                  <SelectItem value="warm, comforting">Warm and Comforting</SelectItem>
+                  <SelectItem value="adventurous">Adventurous</SelectItem>
+                  <SelectItem value="educational">Educational</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="length">Story Length</Label>
-              <Select value={formData.length} onValueChange={(value) => handleChange("length", value)}>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="length">Story Length</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoCircle />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">Choose how long you want the story to be</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select 
+                value={formData.length} 
+                onValueChange={(value) => handleChange("length", value)}
+                data-testid="story-length"
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select length" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="short">Short (~150 words, 1-2 images)</SelectItem>
-                  <SelectItem value="medium">Medium (~300 words, 3-4 images)</SelectItem>
-                  <SelectItem value="long">Long (~500 words, 5-6 images)</SelectItem>
+                  <SelectItem value="short">Short (2-3 minutes)</SelectItem>
+                  <SelectItem value="medium">Medium (4-5 minutes)</SelectItem>
+                  <SelectItem value="long">Long (6-7 minutes)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" size="lg" disabled={isGenerating}>
+          <CardFooter className="flex justify-end">
+            <Button 
+              type="submit" 
+              disabled={isGenerating}
+              className="flex items-center gap-2"
+            >
               {isGenerating ? (
-                <>Generating Story...</>
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
               ) : (
                 <>
-                  <Wand2 className="w-4 h-4 mr-2" />
+                  <Wand2 className="w-4 h-4" />
                   Generate Story
                 </>
               )}
