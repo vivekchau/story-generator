@@ -4,15 +4,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { MoonStar, Sparkles, Stars, Wand2, BookOpen, Palette } from "lucide-react"
-import { AuthButton } from "@/components/auth-button"
 
 export default function Home() {
   return (
     <div className="container flex flex-col items-center justify-center min-h-screen px-4 py-8 mx-auto">
-      <div className="w-full flex justify-end mb-4">
-        <AuthButton />
-      </div>
-      
       {/* Hero Section */}
       <header className="flex flex-col items-center justify-center mb-16 text-center">
         <div className="flex items-center justify-center w-20 h-20 mb-6 rounded-full bg-primary/10">

@@ -13,6 +13,20 @@ const mockGlobal = {
 // Mock process.env
 const originalEnv = { ...process.env };
 
+describe('Database Connection', () => {
+  it('should connect to the real database', async () => {
+    try {
+      type QueryResult = { test: number }[];
+      const result = await prisma.$queryRaw<QueryResult>`SELECT 1 as test`;
+      console.log('Database connection successful:', result);
+      expect(result[0].test).toBe(1);
+    } catch (error) {
+      console.error('Database connection failed:', error);
+      throw error;
+    }
+  });
+});
+
 describe('Database Test Utils', () => {
   beforeAll(async () => {
     await initTestDatabase();
@@ -368,4 +382,18 @@ describe('Database Test Utils', () => {
       }
     });
   });
+
+  describe('Database Connection', () => {
+    it('should connect to the database', async () => {
+      try {
+        // Try to make a simple query to test the connection
+        const result = await prisma.$queryRaw`SELECT 1 as test`
+        console.log('Database connection successful:', result)
+        expect(result).toBeDefined()
+      } catch (error) {
+        console.error('Database connection error:', error)
+        throw error
+      }
+    })
+  })
 }); 

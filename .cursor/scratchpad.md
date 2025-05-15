@@ -244,3 +244,143 @@ expect(getServerSessionMock).toHaveBeenCalled();
 expect(data.success).toBe(true);
 expect(typeof data.expires).toBe('string');
 expect(new Date(data.expires).getTime()).toBeGreaterThan(Date.now()); 
+
+# Download Authentication Feature
+
+## Background and Motivation
+- Currently, any user can download stories without authentication
+- We want to restrict downloads to logged-in users only
+- This will help track user engagement and protect content
+- We'll use Google Auth for authentication
+
+## Key Challenges and Analysis
+1. Need to handle unauthenticated download attempts gracefully
+2. Must maintain the user's intended download after authentication
+3. Need to ensure smooth user experience with minimal friction
+4. Must handle edge cases (e.g., auth failure, network issues)
+
+## High-level Task Breakdown
+
+### 1. Frontend Changes
+- [ ] Add authentication check to download button component
+- [ ] Create download button wrapper component that handles auth state
+- [ ] Implement auth redirect flow with return URL
+- [ ] Add loading state during auth process
+- [ ] Update UI to show login prompt for unauthenticated users
+
+### 2. Backend Changes
+- [ ] Add authentication check to download API endpoint
+- [ ] Implement session validation
+- [ ] Add error handling for unauthenticated requests
+- [ ] Update API response structure to include auth status
+
+### 3. Authentication Flow
+- [ ] Implement auth state persistence
+- [ ] Add return URL handling after successful login
+- [ ] Create auth middleware for protected routes
+- [ ] Handle session expiry and refresh
+
+### 4. Testing
+- [ ] Add unit tests for auth checks
+- [ ] Add integration tests for download flow
+- [ ] Test edge cases (session expiry, network issues)
+- [ ] Add E2E tests for complete user journey
+
+## Project Status Board
+- [ ] Frontend Changes
+  - [ ] Create DownloadButton component with auth check
+  - [ ] Implement auth redirect flow
+  - [ ] Add loading states
+  - [ ] Update UI for unauthenticated users
+- [ ] Backend Changes
+  - [ ] Update download API endpoint
+  - [ ] Add session validation
+  - [ ] Implement error handling
+- [ ] Authentication Flow
+  - [ ] Implement auth state persistence
+  - [ ] Add return URL handling
+  - [ ] Create auth middleware
+- [ ] Testing
+  - [ ] Write unit tests
+  - [ ] Write integration tests
+  - [ ] Add E2E tests
+
+## Success Criteria
+1. Unauthenticated users see a login prompt when trying to download
+2. After successful login, users are redirected back to the download page
+3. Download works automatically after successful authentication
+4. Session expiry is handled gracefully
+5. All edge cases are properly handled with appropriate error messages
+6. Tests cover all major scenarios
+
+## Executor's Feedback or Assistance Requests
+- Ready to begin implementation
+- Need confirmation on the approach before proceeding
+
+## Lessons
+- Keep track of user's intended action during auth flow
+- Ensure smooth user experience with minimal redirects
+- Handle all edge cases gracefully
+- Test thoroughly for different auth scenarios 
+
+# Database Connection Testing Plan
+
+## Background and Motivation
+The application was working fine previously, but after restarting the Supabase database, we're seeing connection errors. We need to systematically verify all components to identify where the issue might be.
+
+## Key Challenges and Analysis
+1. Database connection might need time to fully initialize after restart
+2. Connection string might need verification
+3. Network connectivity needs to be checked
+4. Prisma client configuration needs verification
+5. Authentication flow needs to be tested
+
+## High-level Task Breakdown
+
+### 1. Basic Network Connectivity Tests
+- [ ] Ping database host
+- [ ] Check DNS resolution
+- [ ] Verify port accessibility
+- [ ] Test basic TCP connection
+
+### 2. Database Connection String Verification
+- [ ] Verify DATABASE_URL format
+- [ ] Check password encoding
+- [ ] Validate hostname
+- [ ] Confirm port number
+- [ ] Verify database name
+
+### 3. Prisma Client Tests
+- [ ] Test basic Prisma connection
+- [ ] Verify Prisma client initialization
+- [ ] Test simple query execution
+- [ ] Check transaction handling
+- [ ] Verify error handling
+
+### 4. Authentication Flow Tests
+- [ ] Test database adapter initialization
+- [ ] Verify NextAuth configuration
+- [ ] Test Google OAuth flow
+- [ ] Check session handling
+- [ ] Verify user creation/retrieval
+
+### 5. Application Integration Tests
+- [ ] Test story creation
+- [ ] Verify user-story relationship
+- [ ] Check data persistence
+- [ ] Test data retrieval
+
+## Project Status Board
+- [ ] Complete network connectivity tests
+- [ ] Complete database connection string verification
+- [ ] Complete Prisma client tests
+- [ ] Complete authentication flow tests
+- [ ] Complete application integration tests
+
+## Executor's Feedback or Assistance Requests
+(To be filled as we progress through the tests)
+
+## Lessons
+1. Always verify database connection after restart
+2. Keep track of connection string changes
+3. Document any configuration changes 

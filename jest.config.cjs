@@ -24,9 +24,8 @@ module.exports = {
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'mjs'],
       transform: {
-        '^.+\\.(ts|tsx|js|jsx|mjs)$': ['ts-jest', {
-          tsconfig: '<rootDir>/tsconfig.jest.json',
-          useESM: true
+        '^.+\\.(ts|tsx|js|jsx|mjs)$': ['babel-jest', {
+          configFile: './jest.babelrc'
         }]
       },
       // Exclude API and database tests
@@ -50,9 +49,8 @@ module.exports = {
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
       moduleFileExtensions: ['ts', 'js', 'json', 'mjs'],
       transform: {
-        '^.+\\.(ts|js|mjs)$': ['ts-jest', {
-          tsconfig: '<rootDir>/tsconfig.jest.json',
-          useESM: true
+        '^.+\\.(ts|js|mjs)$': ['babel-jest', {
+          configFile: './jest.babelrc'
         }]
       },
       transformIgnorePatterns: [
@@ -72,13 +70,5 @@ module.exports = {
 
   // Handle circular dependencies
   maxWorkers: 1,
-  testTimeout: 10000,
-  
-  // Transform settings
-  transform: {
-    '^.+\\.(ts|tsx|js|jsx|mjs)$': ['ts-jest', {
-      tsconfig: '<rootDir>/tsconfig.jest.json',
-      useESM: true
-    }]
-  }
+  testTimeout: 10000
 } 

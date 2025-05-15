@@ -1,6 +1,5 @@
 'use client'
 
-import { Providers } from "@/components/providers"
 import { Toaster } from "@/components/ui/toaster"
 
 export function ClientLayout({
@@ -9,9 +8,9 @@ export function ClientLayout({
   children: React.ReactNode
 }) {
   return (
-    <Providers>
+    <>
       {children}
       <Toaster />
-    </Providers>
+    </>
   )
 } 

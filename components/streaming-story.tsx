@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import jsPDF from 'jspdf'
 import { useSession, signIn } from "next-auth/react"
+import { DownloadButton } from "@/components/download-button"
 
 interface StoryMetadata {
   characters?: string
@@ -287,199 +288,112 @@ The illustration should visually convey the story's message about ${story.metada
 
   const downloadPDF = async () => {
     try {
+      // Check if user is authenticated
+      if (!session) {
+        toast({
+          title: 'Error',
+          description: 'Please sign in to download the story',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (!story) {
+        toast({
+          title: 'Error',
+          description: 'No story available to download',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       setIsDownloading(true);
       const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 15;
-      const textWidth = pageWidth - (2 * margin);
-      
-      // Add title page
-      doc.setFontSize(28);
-      doc.text('My Bedtime Story', pageWidth / 2, pageHeight / 3, { align: 'center' });
-      
-      // Add metadata if available
-      if (story?.metadata) {
-        doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100);
-        let metadataY = pageHeight / 2;
-        if (story.metadata.age) {
-          doc.text(`For ages ${story.metadata.age}`, pageWidth / 2, metadataY, { align: 'center' });
-          metadataY += 10;
-        }
-        if (story.metadata.characters) {
-          doc.text(`Featuring ${story.metadata.characters}`, pageWidth / 2, metadataY, { align: 'center' });
-        }
-      }
-      
-      // Add a new page for the story content
-      doc.addPage();
-      let currentY = margin + 10;
-      
-      // Reset text color to black for story content
-      doc.setTextColor(0, 0, 0);
-      
-      // Function to add text with word wrap and proper line spacing
-      const addWrappedText = (text: string, y: number) => {
-        const lines = doc.splitTextToSize(text, textWidth);
-        doc.text(lines, margin, y);
-        return y + (lines.length * 7);
-      };
+      let y = 20;
+      const lineHeight = 7;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 20;
+      const maxWidth = doc.internal.pageSize.width - 2 * margin;
 
-      // Calculate total images
-      const totalImages = story?.images?.length || 0;
-      let currentImage = 0;
+      // Add title
+      doc.setFontSize(20);
+      doc.text(story.title, margin, y);
+      y += lineHeight * 2;
+
+      // Add story content with inline images
+      doc.setFontSize(12);
+      const paragraphs = story.content.split('\n\n');
       
-      // Add each paragraph and image
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i];
+        const lines = doc.splitTextToSize(paragraph, maxWidth);
         
-        // Add text
-        doc.setFontSize(12);
-        currentY = addWrappedText(paragraph, currentY);
-        
-        // Add image if we have more images and this is an appropriate spot
-        if (story && currentImage < totalImages && i % 2 === 1) {
+        // Add paragraph text
+        for (const line of lines) {
+          if (y > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += lineHeight;
+        }
+        y += lineHeight;
+
+        // Add image after every 1-2 paragraphs
+        if (story.images && story.images[Math.floor(i / 2)] && i % 2 === 1) {
+          const imageIndex = Math.floor(i / 2);
+          const imageUrl = story.images[imageIndex];
+
           try {
-            // Add some space before image
-            currentY += 5;
-            
-            // Proxy the image through our API
+            // Use proxy endpoint to fetch image
             const response = await fetch('/api/proxy-image', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: story.images[currentImage] })
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ url: imageUrl }),
             });
-            
-            if (!response.ok) throw new Error('Failed to proxy image');
-            
-            const blob = await response.blob();
-            const imageUrl = URL.createObjectURL(blob);
-            
-            // Create a temporary image to get dimensions
-            const img = document.createElement('img');
-            await new Promise<void>((resolve, reject) => {
-              img.onload = () => resolve();
-              img.onerror = () => reject(new Error('Failed to load image'));
-              img.src = imageUrl;
-            });
-            
-            // Calculate dimensions maintaining aspect ratio
-            const maxImgWidth = pageWidth - (2 * margin);
-            const maxImgHeight = 120;
-            let imgWidth = maxImgWidth;
-            let imgHeight = (img.height / img.width) * imgWidth;
-            
-            // If image is too tall, scale it down
-            if (imgHeight > maxImgHeight) {
-              imgHeight = maxImgHeight;
-              imgWidth = (img.width / img.height) * imgHeight;
-            }
-            
-            // Check if we need a new page for the image
-            if (currentY + imgHeight + 15 > pageHeight - margin) {
-              doc.addPage();
-              currentY = margin;
-            }
-            
-            // Center the image horizontally
-            const xOffset = (pageWidth - imgWidth) / 2;
-            doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
-            currentY += imgHeight + 10;
-            currentImage++;
-            
-            // Clean up the object URL
-            URL.revokeObjectURL(imageUrl);
-          } catch (error) {
-            console.error('Failed to add image to PDF:', error);
-            currentY = addWrappedText('(Image could not be loaded)', currentY + 5);
-          }
-        } else {
-          // Add less space between paragraphs when there's no image
-          currentY += 5;
-        }
-        
-        // Check if we need a new page
-        if (currentY > pageHeight - margin) {
-          doc.addPage();
-          currentY = margin;
-        }
-      }
-      
-      // If we have any remaining images, add them at the end
-      while (currentImage < totalImages) {
-        try {
-          // Add some space before image
-          currentY += 5;
-          
-          // Check if we need a new page
-          if (currentY + 120 > pageHeight - margin) {
-            doc.addPage();
-            currentY = margin;
-          }
-          
-          // Proxy the image through our API
-          const response = await fetch('/api/proxy-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: story!.images[currentImage] })
-          });
-          
-          if (!response.ok) throw new Error('Failed to proxy image');
-          
-          const blob = await response.blob();
-          const imageUrl = URL.createObjectURL(blob);
-          
-          // Create a temporary image to get dimensions
-          const img = document.createElement('img');
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = imageUrl;
-          });
-          
-          // Calculate dimensions maintaining aspect ratio
-          const maxImgWidth = pageWidth - (2 * margin);
-          const maxImgHeight = 120;
-          let imgWidth = maxImgWidth;
-          let imgHeight = (img.height / img.width) * imgWidth;
-          
-          // If image is too tall, scale it down
-          if (imgHeight > maxImgHeight) {
-            imgHeight = maxImgHeight;
-            imgWidth = (img.width / img.height) * imgHeight;
-          }
-          
-          // Center the image horizontally
-          const xOffset = (pageWidth - imgWidth) / 2;
-          doc.addImage(imageUrl, 'JPEG', xOffset, currentY, imgWidth, imgHeight);
-          currentY += imgHeight + 10;
-          currentImage++;
-          
-          // Clean up the object URL
-          URL.revokeObjectURL(imageUrl);
-        } catch (error) {
-          console.error('Failed to add image to PDF:', error);
-          currentY = addWrappedText('(Image could not be loaded)', currentY + 5);
-          currentImage++;
-        }
-      }
-      
-      // Save the PDF with the story title
-      const fileName = story?.title ? 
-        `${story.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : 
-        'bedtime-story.pdf';
-      doc.save(fileName);
 
+            if (!response.ok) {
+              throw new Error(`Failed to fetch image: ${response.statusText}`);
+            }
+
+            const imageBlob = await response.blob();
+            const imageData = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(imageBlob);
+            });
+
+            // Check if we need a new page for the image
+            if (y > pageHeight - margin - 100) {
+              doc.addPage();
+              y = margin;
+            }
+
+            // Add image with proper dimensions
+            const imgWidth = maxWidth;
+            const imgHeight = (imgWidth * 9) / 16; // 16:9 aspect ratio
+            doc.addImage(imageData as string, 'JPEG', margin, y, imgWidth, imgHeight);
+            y += imgHeight + lineHeight * 2;
+          } catch (error) {
+            console.error('Error adding image to PDF:', error);
+            // Continue with next paragraph if image fails
+          }
+        }
+      }
+
+      // Save the PDF
+      doc.save(`${story.title}.pdf`);
       toast({
-        title: "PDF Downloaded!",
-        description: "Your story has been saved as a PDF with illustrations.",
+        title: 'Success',
+        description: 'Story downloaded successfully!'
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate PDF. Please try again.',
+        description: 'Failed to download story. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -559,15 +473,11 @@ The illustration should visually convey the story's message about ${story.metada
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={downloadPDF}
+                    <DownloadButton 
+                      onDownload={downloadPDF}
                       disabled={isDownloading}
                       className={isDownloading ? "cursor-not-allowed opacity-50" : ""}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
+                    />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
