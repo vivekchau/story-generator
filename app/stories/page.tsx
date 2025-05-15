@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { BookOpen } from "lucide-react"
+import { BookOpen, Download } from "lucide-react"
+import { DownloadButton } from "@/components/download-button"
+import jsPDF from "jspdf"
 
 interface Story {
   id: string
@@ -50,6 +52,73 @@ export default function StoriesPage() {
     fetchStories()
   }, [session, router, toast])
 
+  const downloadPDF = async (story: Story) => {
+    try {
+      const doc = new jsPDF()
+      let y = 20
+      const lineHeight = 7
+      const pageHeight = doc.internal.pageSize.height
+      const margin = 20
+      const maxWidth = doc.internal.pageSize.width - 2 * margin
+
+      // Add title
+      doc.setFontSize(20)
+      doc.text(story.title, margin, y)
+      y += lineHeight * 2
+
+      // Add story content with inline images
+      doc.setFontSize(12)
+      const paragraphs = story.content.split('\n\n')
+      for (let i = 0; i < paragraphs.length; i++) {
+        const paragraph = paragraphs[i]
+        const lines = doc.splitTextToSize(paragraph, maxWidth)
+        for (const line of lines) {
+          if (y > pageHeight - margin) {
+            doc.addPage()
+            y = margin
+          }
+          doc.text(line, margin, y)
+          y += lineHeight
+        }
+        y += lineHeight
+        // Add image after every 1-2 paragraphs
+        if (story.images && story.images[Math.floor(i / 2)] && i % 2 === 1) {
+          const imageIndex = Math.floor(i / 2)
+          const imageUrl = story.images[imageIndex]
+          try {
+            const response = await fetch('/api/proxy-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: imageUrl }),
+            })
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`)
+            const imageBlob = await response.blob()
+            const imageData = await new Promise((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result)
+              reader.readAsDataURL(imageBlob)
+            })
+            if (y > pageHeight - margin - 100) {
+              doc.addPage()
+              y = margin
+            }
+            const imgWidth = maxWidth
+            const imgHeight = (imgWidth * 9) / 16
+            doc.addImage(imageData as string, 'JPEG', margin, y, imgWidth, imgHeight)
+            y += imgHeight + lineHeight * 2
+          } catch (error) {
+            console.error('Error adding image to PDF:', error)
+          }
+        }
+      }
+      doc.save(`${story.title}.pdf`)
+      toast({ title: 'Success', description: 'Story downloaded successfully!' })
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast({ title: 'Error', description: 'Failed to download story. Please try again.', variant: 'destructive' })
+    }
+  }
+
   if (!session) {
     return null
   }
@@ -83,12 +152,12 @@ export default function StoriesPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {new Date(story.createdAt).toLocaleDateString()}
                 </p>
-                <Button 
-                  className="w-full"
-                  onClick={() => router.push(`/story/${story.id}`)}
-                >
-                  Read Story
-                </Button>
+                <div className="flex gap-2">
+                  <Button className="w-full" onClick={() => router.push(`/story/${story.id}`)}>
+                    Read Story
+                  </Button>
+                  <DownloadButton onDownload={() => downloadPDF(story)} />
+                </div>
               </CardContent>
             </Card>
           ))}
