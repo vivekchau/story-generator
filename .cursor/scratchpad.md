@@ -384,3 +384,75 @@ The application was working fine previously, but after restarting the Supabase d
 1. Always verify database connection after restart
 2. Keep track of connection string changes
 3. Document any configuration changes 
+
+# Migration from OpenAI APIs to Fireworks AI (Open Source Models)
+
+## Background and Motivation
+- The current application uses OpenAI APIs for both language (story generation) and image generation.
+- The goal is to switch to open-source models hosted on Fireworks AI to reduce costs, increase flexibility, and avoid vendor lock-in.
+- Fireworks AI provides API access to open-source LLMs (like Llama, Mistral, etc.) and image models (like Stable Diffusion).
+
+## Key Challenges and Analysis
+1. **API Differences:** Fireworks AI APIs may have different endpoints, authentication, and request/response formats compared to OpenAI.
+2. **Model Selection:** Need to choose suitable open-source models for both text and image generation that match the quality and speed of OpenAI's models.
+3. **Code Refactoring:** All code that calls OpenAI APIs must be updated to use Fireworks AI APIs instead.
+4. **Testing:** Ensure that the new models produce acceptable results and that all features (story generation, image generation, PDF download, etc.) still work.
+5. **Environment Variables:** Update environment variables and secrets to use Fireworks AI credentials.
+6. **Documentation:** Update documentation and code comments to reflect the new setup.
+
+## High-level Task Breakdown
+
+### 1. Discovery & Analysis
+- [ ] Identify all code that uses OpenAI APIs (text and image generation)
+- [ ] Review Fireworks AI documentation for language and image APIs
+- [ ] Select appropriate models from Fireworks AI
+
+### 2. Refactor API Integration
+- [ ] Update environment variables to store Fireworks AI API keys
+- [ ] Replace OpenAI API calls with Fireworks AI API calls for text generation
+- [ ] Replace OpenAI API calls with Fireworks AI API calls for image generation
+- [ ] Refactor request/response handling as needed
+
+### 3. Testing & Validation
+- [ ] Test story generation with Fireworks AI LLMs
+- [ ] Test image generation with Fireworks AI image models
+- [ ] Test PDF download and UI integration
+- [ ] Handle errors and edge cases
+
+### 4. Documentation & Cleanup
+- [ ] Update README and code comments
+- [ ] Remove unused OpenAI code and environment variables
+
+## Success Criteria
+1. All story and image generation features work using Fireworks AI APIs
+2. No OpenAI API calls remain in the codebase
+3. Quality of generated stories and images is acceptable
+4. All tests pass and manual testing confirms functionality
+5. Documentation is up to date
+
+## Project Status Board
+- [ ] Discovery & Analysis
+  - [ ] Identify OpenAI usage in codebase
+  - [ ] Review Fireworks AI docs
+  - [ ] Select models
+- [ ] Refactor API Integration
+  - [ ] Update env vars
+  - [ ] Replace text generation
+  - [ ] Replace image generation
+  - [ ] Refactor request/response
+- [ ] Testing & Validation
+  - [ ] Test story gen
+  - [ ] Test image gen
+  - [ ] Test PDF/UI
+  - [ ] Handle errors
+- [ ] Documentation & Cleanup
+  - [ ] Update docs
+  - [ ] Remove OpenAI code
+
+## Executor's Feedback or Assistance Requests
+- Awaiting user confirmation to proceed with Discovery & Analysis phase.
+
+## Lessons
+- Always check for API differences (auth, endpoints, payloads)
+- Test new models for quality before full migration
+- Keep old code until new integration is fully validated 
