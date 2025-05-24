@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server"
-import OpenAI from "openai"
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-export const runtime = 'edge'
+//export const runtime = 'edge'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { prompt } = body
 
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is not configured")
+    if (!process.env.FIREWORKS_API_KEY) {
+      throw new Error("Fireworks API key is not configured")
     }
 
     if (!prompt) {
@@ -26,29 +20,36 @@ export async function POST(request: Request) {
 
     console.log("Generating image with prompt:", prompt)
 
-    // Generate image using DALL-E
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "vivid",
-    })
+    // Call Fireworks Stable Diffusion API
+    const response = await fetch(
+      "https://api.fireworks.ai/inference/v1/image_generation/accounts/fireworks/models/stable-diffusion-xl-1024-v1-0",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "image/jpeg",
+          "Authorization": `Bearer ${process.env.FIREWORKS_API_KEY}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          height: 1024,
+          width: 1024,
+          seed: 0,
+        }),
+      }
+    );
 
-    if (!response.data || response.data.length === 0) {
-      throw new Error("No image generated")
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Fireworks API error: ${errorText}`);
     }
 
-    const imageUrl = response.data[0].url
+    // Convert the image buffer to a base64 string for the frontend
+    const buffer = await response.arrayBuffer();
+    const base64Image = Buffer.from(buffer).toString("base64");
+    const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    if (!imageUrl) {
-      throw new Error("No image URL returned")
-    }
-
-    console.log("Image generated successfully:", imageUrl)
-
-    return NextResponse.json({ imageUrl })
+    return NextResponse.json({ imageUrl });
   } catch (error) {
     console.error("Error generating image:", error)
     return NextResponse.json(

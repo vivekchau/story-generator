@@ -3,7 +3,8 @@ import OpenAI from "openai"
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https://api.fireworks.ai/inference/v1",
+  apiKey: process.env.FIREWORKS_API_KEY,
 })
 
 export async function POST(request: Request) {
@@ -11,8 +12,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { age, characters, setting, moral, length, continuation, previousStory, prompt } = body
 
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is not configured")
+    if (!process.env.FIREWORKS_API_KEY) {
+      throw new Error("Fireworks API key is not configured")
     }
 
     // Calculate target word count based on length
@@ -60,7 +61,7 @@ Requirements for the continuation:
     // Generate the story and title in parallel
     const [storyCompletion, titleCompletion] = await Promise.all([
       openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "accounts/fireworks/models/llama-v3p3-70b-instruct",
         messages: [
           {
             role: "system",
@@ -77,7 +78,7 @@ Requirements for the continuation:
         max_tokens: 1000,
       }),
       openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "accounts/fireworks/models/llama-v3p3-70b-instruct",
         messages: [
           {
             role: "system",

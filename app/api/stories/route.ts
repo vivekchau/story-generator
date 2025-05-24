@@ -3,6 +3,14 @@ import { NextResponse } from "next/server"
 import { prisma } from "../../../lib/prisma"
 import { authOptions } from "../auth/[...nextauth]/route"
 import { Prisma } from "@prisma/client"
+import { createClient } from '@supabase/supabase-js'
+
+console.log('SUPABASE URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 // Define the expected types
 interface StoryMetadata {
@@ -76,11 +84,38 @@ export async function POST(req: Request) {
       metadata: data.metadata || {}
     }
 
+    // Upload images to Supabase Storage and get permanent URLs
+    const permanentImageUrls: string[] = []
+    for (let i = 0; i < cleanData.images.length; i++) {
+      const tempUrl = cleanData.images[i]
+      try {
+        // Download image as buffer
+        const response = await fetch(tempUrl)
+        if (!response.ok) throw new Error('Failed to download image from temp URL')
+        const arrayBuffer = await response.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        // Upload to Supabase Storage
+        const filePath = `${session.user.id}/${Date.now()}-image-${i}.png`
+        const { error: uploadError } = await supabase.storage
+          .from('story-images')
+          .upload(filePath, buffer, { contentType: 'image/png', upsert: true })
+        if (uploadError) throw uploadError
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('story-images')
+          .getPublicUrl(filePath)
+        permanentImageUrls.push(publicUrlData.publicUrl)
+      } catch (err) {
+        console.error('Image upload error:', err)
+        // Optionally, skip or add a placeholder
+      }
+    }
+
     const story = await prisma.story.create({
       data: {
         title: cleanData.title,
         content: cleanData.content,
-        images: cleanData.images,
+        images: permanentImageUrls,
         metadata: cleanData.metadata,
         userId: session.user.id
       }
