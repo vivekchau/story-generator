@@ -76,8 +76,8 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
     setRemainingImageCount(getImageCountForLength(metadata.length))
 
     // Save initial story to localStorage
-    localStorage.setItem("currentStory", JSON.stringify(initialStory))
-    localStorage.setItem(`story_${storyId}`, JSON.stringify(initialStory))
+    saveStoryToStorage(initialStory, "currentStory")
+    saveStoryToStorage(initialStory, `story_${storyId}`)
 
     // Parse paragraphs once
     const parsedParagraphs = initialContent.split("\n\n").filter(p => p.trim().length > 0)
@@ -121,6 +121,54 @@ export default function StreamingStory({ storyId, initialContent, initialTitle, 
 
     return () => clearInterval(streamInterval)
   }, [paragraphs, currentParagraphIndex])
+
+  // Function to safely save story to localStorage with error handling
+  const saveStoryToStorage = (storyData: StoryData, key: string) => {
+    try {
+      // Create a storage-safe version without image URLs to prevent quota issues
+      const storageSafeStory = {
+        ...storyData,
+        images: [] // Don't store image URLs in localStorage to save space
+      }
+      
+      const storyJson = JSON.stringify(storageSafeStory)
+      
+      // Check if the data would exceed localStorage quota (rough estimate)
+      if (storyJson.length > 5000000) { // 5MB limit
+        console.warn("Story data too large for localStorage, skipping save")
+        return false
+      }
+      
+      localStorage.setItem(key, storyJson)
+      return true
+    } catch (error) {
+      console.error("Failed to save story to localStorage:", error)
+      // If localStorage is full, try to clear some old data
+      try {
+        // Clear old stories to make space
+        const keys = Object.keys(localStorage)
+        const storyKeys = keys.filter(key => key.startsWith('story_'))
+        
+        // Remove oldest stories (keep only the 5 most recent)
+        if (storyKeys.length > 5) {
+          storyKeys.slice(0, storyKeys.length - 5).forEach(key => {
+            localStorage.removeItem(key)
+          })
+        }
+        
+        // Try saving again
+        const storageSafeStory = {
+          ...storyData,
+          images: []
+        }
+        localStorage.setItem(key, JSON.stringify(storageSafeStory))
+        return true
+      } catch (retryError) {
+        console.error("Failed to save story even after clearing space:", retryError)
+        return false
+      }
+    }
+  }
 
   // Function to generate additional images
   const generateAdditionalImages = async () => {
@@ -204,9 +252,9 @@ The illustration should visually convey the story's message about ${story.metada
         remainingImageCount: remainingImageCount - 1
       }
 
-      // Save to localStorage
-      localStorage.setItem("currentStory", JSON.stringify(updatedStory))
-      localStorage.setItem(`story_${story.id}`, JSON.stringify(updatedStory))
+      // Save to localStorage safely
+      saveStoryToStorage(updatedStory, "currentStory")
+      saveStoryToStorage(updatedStory, `story_${story.id}`)
 
       // Update state
       setStory(updatedStory)
@@ -244,8 +292,8 @@ The illustration should visually convey the story's message about ${story.metada
           ...updatedStory,
           imageStatus: "complete" as const
         }
-        localStorage.setItem("currentStory", JSON.stringify(finalStory))
-        localStorage.setItem(`story_${story.id}`, JSON.stringify(finalStory))
+        saveStoryToStorage(finalStory, "currentStory")
+        saveStoryToStorage(finalStory, `story_${story.id}`)
         setStory(finalStory)
       }
     } catch (error) {
@@ -267,8 +315,8 @@ The illustration should visually convey the story's message about ${story.metada
           ...story,
           imageStatus: "error" as const
         }
-        localStorage.setItem("currentStory", JSON.stringify(errorStory))
-        localStorage.setItem(`story_${story.id}`, JSON.stringify(errorStory))
+        saveStoryToStorage(errorStory, "currentStory")
+        saveStoryToStorage(errorStory, `story_${story.id}`)
         setStory(errorStory)
       }
     }

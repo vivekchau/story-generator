@@ -82,11 +82,11 @@ Requirements for the continuation:
         messages: [
           {
             role: "system",
-            content: "You are a creative title generator for children's stories."
+            content: "You are a creative title generator for children's stories. Generate exactly ONE short, engaging title. Do not provide multiple options or suggestions. Return only the title itself, nothing else."
           },
           {
             role: "user",
-            content: `Generate a short, engaging title for a children's story about ${characters} in ${setting} that teaches about ${moral}.`
+            content: `Generate a single, short, engaging title for a children's story about ${characters} in ${setting} that teaches about ${moral}. Return only the title, no explanations or multiple options.`
           }
         ],
         temperature: 0.7,
@@ -96,7 +96,24 @@ Requirements for the continuation:
 
     // Get the story content and title
     const storyContent = storyCompletion.choices[0].message.content?.trim() || ""
-    const title = titleCompletion.choices[0].message.content?.trim() || "The Adventure Begins"
+    let title = titleCompletion.choices[0].message.content?.trim() || "The Adventure Begins"
+    
+    // Clean the title to ensure it's just one title
+    // Remove any numbering, bullet points, or multiple options
+    title = title
+      .replace(/^\d+\.\s*/, '') // Remove leading numbers like "1. "
+      .replace(/^[-*]\s*/, '') // Remove leading dashes or asterisks
+      .replace(/^[A-Z]\.\s*/, '') // Remove leading letters like "A. "
+      .split('\n')[0] // Take only the first line
+      .split(' - ')[0] // Take only the first part if separated by dashes
+      .split(' or ')[0] // Take only the first part if separated by "or"
+      .trim()
+    
+    // If the title is empty after cleaning, use a default
+    if (!title || title.length < 2) {
+      title = "The Adventure Begins"
+    }
+    
     const storyId = crypto.randomUUID()
 
     // Generate the first image immediately to show something quickly

@@ -3,6 +3,17 @@
 ## Background and Motivation
 The bedtime story generator needs comprehensive testing to ensure reliability and maintainability. We need to implement various types of tests (unit, integration, end-to-end) to catch bugs early and maintain code quality.
 
+**Recent Issue Fixed**: Multiple title options were appearing instead of a single title. This was caused by the AI model sometimes returning multiple title suggestions instead of just one. The fix involved:
+1. Making the title generation prompt more specific to request only one title
+2. Adding title cleaning logic to remove numbering, bullet points, and multiple options
+3. Ensuring only the first title option is used
+
+**Recent Issue Fixed**: localStorage quota exceeded error when generating images. This was caused by storing large image URLs in localStorage, which has a size limit. The fix involved:
+1. Creating a safe storage function that doesn't store image URLs in localStorage
+2. Adding error handling for localStorage quota exceeded errors
+3. Implementing automatic cleanup of old stories when storage is full
+4. Using fallback storage strategies when localStorage fails
+
 ## Key Challenges and Analysis
 1. API Route Testing ✅
    - Mock authentication/session
@@ -18,6 +29,17 @@ The bedtime story generator needs comprehensive testing to ensure reliability an
    - Test interaction between frontend and API
    - Test database operations
    - Test authentication flow
+
+4. Title Generation Issues ✅
+   - Fixed multiple title options appearing
+   - Added title cleaning logic
+   - Improved prompt specificity
+
+5. localStorage Storage Issues ✅
+   - Fixed quota exceeded errors when storing large story data
+   - Implemented safe storage strategy without image URLs
+   - Added automatic cleanup of old stories
+   - Added error handling for storage failures
 
 ## High-level Task Breakdown
 
